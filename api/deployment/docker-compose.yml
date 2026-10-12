@@ -1,0 +1,15 @@
+# Local run of the API with the IAM role of your AWS profile. Run from the api folder:
+#   copy deployment/api.env.example deployment/api.env, fill it in, then   docker compose -f deployment/docker-compose.yml up --build
+# The UI (../ui, npm run dev) talks to http://localhost:5080.
+name: claim-selection-api
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    image: claim-selection-api
+    env_file: api.env
+    ports:
+      - "5080:8080"
+    volumes:
+      - ${USERPROFILE:-${HOME}}/.aws:/home/app/.aws:ro

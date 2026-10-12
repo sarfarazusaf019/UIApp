@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claim-selection-ui
+  namespace: claim-selection
+  labels:
+    app: claim-selection-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: claim-selection-ui
+  template:
+    metadata:
+      labels:
+        app: claim-selection-ui
+      annotations:
+        # Explicitly request Istio sidecar injection (redundant if the
+        # namespace already has istio-injection=enabled, but keeps the
+        # workload self-describing).
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: claim-selection-ui
+          # Built directly into containerd's local image store with nerdctl,
+          # e.g. `nerdctl -n k8s.io build -t claim-selection-ui:v1 -f deployment/Dockerfile .` (after: npm run build) - no registry
+          # push/pull involved, so imagePullPolicy must be Never. Rebuild+retag (or bump the tag) whenever the image changes.
+          image: claim-selection-ui:v1
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # where '/api' is sent: the API service (name.namespace.svc.cluster.local:port)
+            - name: API_UPSTREAM
+              value: "http://claim-selection-api.claim-selection.svc.cluster.local:80"
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi

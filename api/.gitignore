@@ -1,0 +1,21 @@
+# build output
+bin/
+obj/
+artifacts/
+publish/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+
+# local settings and secrets (never commit real connection strings)
+appsettings.Development.json
+appsettings.Remote.json
+appsettings.Local.json
+*.local.json
+.env
+
+# local docker settings
+deployment/api.env

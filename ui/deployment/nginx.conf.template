@@ -1,0 +1,21 @@
+# nginx template: ${API_UPSTREAM} and ${NGINX_LOCAL_RESOLVERS} are filled in at container start (the other $names are nginx variables).
+server {
+    listen 8080;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # the API service. Resolved when a request comes in (not at start-up), so the UI container also starts where the API does not exist.
+    location /api/ {
+        resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+        set $api_upstream ${API_UPSTREAM};
+        proxy_pass $api_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 120s;
+    }
+
+    # single page app: every other path serves index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

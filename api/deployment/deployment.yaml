@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claim-selection-api
+  namespace: claim-selection
+  labels:
+    app: claim-selection-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: claim-selection-api
+  template:
+    metadata:
+      labels:
+        app: claim-selection-api
+      annotations:
+        # Explicitly request Istio sidecar injection (redundant if the
+        # namespace already has istio-injection=enabled, but keeps the
+        # workload self-describing).
+        sidecar.istio.io/inject: "true"
+    spec:
+      serviceAccountName: claim-selection-api
+      containers:
+        - name: claim-selection-api
+          # Built directly into containerd's local image store with nerdctl,
+          # e.g. `nerdctl -n k8s.io build -t claim-selection-api:v1 -f deployment/Dockerfile .` (after: dotnet publish ... -o publish) - no registry
+          # push/pull involved, so imagePullPolicy must be Never or the
+          # kubelet will try (and fail) to pull this tag from a remote
+          # registry. Rebuild+retag (or bump the tag) whenever the image
+          # changes, since Never means Kubernetes won't refresh it for you.
+          image: claim-selection-api:v1
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            # Aurora PostgreSql with the IAM role (no password). The role comes from the service account above.
+            - name: Database__AuthenticationMode
+              value: Iam
+            - name: AuroraPostgreSql__Host
+              value: "<aurora-endpoint>"
+            - name: AuroraPostgreSql__Database
+              value: "<database>"
+            - name: AuroraPostgreSql__DbUser
+              value: "<iam-enabled-db-user>"
+            - name: AuroraPostgreSql__Region
+              value: "<aws-region>"
+            # Cluster WITHOUT IAM roles for service accounts (for example a local cluster): give the pod AWS credentials from a Secret instead
+            # (kubectl create secret generic aws-credentials --from-literal=AWS_ACCESS_KEY_ID=... --from-literal=AWS_SECRET_ACCESS_KEY=... --from-literal=AWS_SESSION_TOKEN=...)
+            # envFrom:
+            #   - secretRef:
+            #       name: aws-credentials
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: claim-selection-ui
+  namespace: claim-selection
+  labels:
+    app: claim-selection-ui
+spec:
+  selector:
+    app: claim-selection-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

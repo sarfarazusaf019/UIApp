@@ -1,0 +1,3 @@
+*
+!dist/
+!deployment/nginx.conf.template
